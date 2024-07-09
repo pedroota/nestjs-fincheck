@@ -1,31 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateBankAccountDto } from './dto/create-bank-account.dto';
-import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
+import { CreateBankAccountDto } from '../dto/create-bank-account.dto';
+import { UpdateBankAccountDto } from '../dto/update-bank-account.dto';
 import { BankAccountsRepository } from 'src/shared/persistence/repositories/bankAccount.repositories';
+import { ValidateBankAccountOwnershipService } from './validate-bank-account-ownership.service';
 
 @Injectable()
 export class BankAccountsService {
   constructor(
     private readonly bankAccountsRepository: BankAccountsRepository,
+    private readonly validateBankAccountOwnershipService: ValidateBankAccountOwnershipService,
   ) {}
-
-  private async isBankAccountOwner(
-    userId: string,
-    bankAccountId: string,
-  ): Promise<boolean> {
-    const isBankAccountOwner = await this.bankAccountsRepository.findFirst({
-      where: {
-        id: bankAccountId,
-        userId,
-      },
-    });
-
-    if (!isBankAccountOwner) {
-      return false;
-    }
-
-    return true;
-  }
 
   async create(userId: string, createBankAccountDto: CreateBankAccountDto) {
     const bankAccount = await this.bankAccountsRepository.create({
@@ -68,10 +52,11 @@ export class BankAccountsService {
     bankAccountId: string,
     updateBankAccountDto: UpdateBankAccountDto,
   ) {
-    const isBankAccountOwner = await this.isBankAccountOwner(
-      userId,
-      bankAccountId,
-    );
+    const isBankAccountOwner =
+      await this.validateBankAccountOwnershipService.validate(
+        userId,
+        bankAccountId,
+      );
 
     if (!isBankAccountOwner) {
       throw new NotFoundException('Bank account not found');
@@ -93,10 +78,11 @@ export class BankAccountsService {
   }
 
   async remove(userId: string, bankAccountId: string) {
-    const isBankAccountOwner = await this.isBankAccountOwner(
-      userId,
-      bankAccountId,
-    );
+    const isBankAccountOwner =
+      await this.validateBankAccountOwnershipService.validate(
+        userId,
+        bankAccountId,
+      );
 
     if (!isBankAccountOwner) {
       throw new NotFoundException('Bank account not found');
