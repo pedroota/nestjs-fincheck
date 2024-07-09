@@ -34,17 +34,33 @@ export class BankAccountsService {
       where: {
         userId,
       },
-      select: {
-        initialBalance: true,
-        name: true,
-        type: true,
-        color: true,
-        userId: true,
-        id: true,
+      include: {
+        transactions: {
+          select: {
+            type: true,
+            value: true,
+          },
+        },
       },
     });
 
-    return bankAccounts;
+    return bankAccounts.map(({ transactions, ...bankAccount }) => {
+      const totalTransactions = transactions.reduce(
+        (acc, transaction) =>
+          acc +
+          (transaction.type === 'INCOME'
+            ? transaction.value
+            : -transaction.value),
+        0,
+      );
+
+      const currentBalance = bankAccount.initialBalance + totalTransactions;
+
+      return {
+        ...bankAccount,
+        currentBalance,
+      };
+    });
   }
 
   async update(
